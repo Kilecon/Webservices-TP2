@@ -1,27 +1,41 @@
-import { Module } from '@nestjs/common';
+import { Module, ValidationPipe } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { ClientsModule } from '@nestjs/microservices';
 import { grpcOptions } from '@recipes/contracts/grpc';
 
-import { AuthController } from './auth.controller.js';
+import { AuthController } from './auth/auth.controller.js';
+import { AuthGuard } from './auth/auth.guard.js';
+import { ErrorFilter } from './common/error.filter.js';
+import { RECIPE_CLIENT, USER_CLIENT } from './common/grpc.js';
 import { config } from './config.js';
 import { HealthController } from './health.controller.js';
-import { JwtAuthGuard } from './jwt-auth.guard.js';
-import { RecipeController } from './recipe.controller.js';
+import { RecipesController } from './recipes/recipes.controller.js';
 
 @Module({
+  controllers: [AuthController, HealthController, RecipesController],
   imports: [
     ClientsModule.register([
       {
+        name: USER_CLIENT,
         ...grpcOptions('user', config.userGrpcUrl),
-        name: 'USER_SERVICE',
       },
       {
+        name: RECIPE_CLIENT,
         ...grpcOptions('recipe', config.recipeGrpcUrl),
-        name: 'RECIPE_SERVICE',
       },
     ]),
   ],
-  controllers: [AuthController, HealthController, RecipeController],
-  providers: [JwtAuthGuard],
+  providers: [
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_FILTER, useClass: ErrorFilter },
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({
+        forbidNonWhitelisted: true,
+        transform: true,
+        whitelist: true,
+      }),
+    },
+  ],
 })
 export class AppModule {}

@@ -15,8 +15,10 @@ import {
   Post,
 } from '@nestjs/common';
 import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { lastValueFrom } from 'rxjs';
 
-import { rpc } from './rpc.js';
+import { USER_CLIENT } from '../common/grpc.js';
+import { Public } from './auth.guard.js';
 
 class RegisterDto implements RegisterRequest {
   @IsEmail()
@@ -41,25 +43,23 @@ class LoginDto implements LoginRequest {
 }
 
 @Controller('auth')
+@Public()
 export class AuthController implements OnModuleInit {
   private users!: UserServiceClient;
 
-  constructor(
-    @Inject('USER_SERVICE')
-    private readonly userClient: ClientGrpc,
-  ) {}
+  constructor(@Inject(USER_CLIENT) private readonly client: ClientGrpc) {}
 
   onModuleInit(): void {
-    this.users = this.userClient.getService<UserServiceClient>('UserService');
+    this.users = this.client.getService<UserServiceClient>('UserService');
   }
 
   @Post('register')
   register(@Body() request: RegisterDto): Promise<User> {
-    return rpc(this.users.register(request));
+    return lastValueFrom(this.users.register(request));
   }
 
   @Post('login')
   login(@Body() request: LoginDto): Promise<LoginResponse> {
-    return rpc(this.users.login(request));
+    return lastValueFrom(this.users.login(request));
   }
 }

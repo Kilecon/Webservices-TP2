@@ -4,19 +4,35 @@ import {
   type CanActivate,
   type ExecutionContext,
   Injectable,
+  SetMetadata,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { jwtVerify } from 'jose';
 
-import { config } from './config.js';
+import { config } from '../config.js';
+
+const IS_PUBLIC = 'isPublic';
+
+export const Public = () => SetMetadata(IS_PUBLIC, true);
 
 export interface AuthenticatedRequest extends Request {
-  userId: string;
+  user: {
+    id: string;
+  };
 }
 
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class AuthGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
+
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const authorization = request.headers.authorization;
     const token =
@@ -33,7 +49,7 @@ export class JwtAuthGuard implements CanActivate {
       );
       if (!payload.sub)
         throw new UnauthorizedException('Invalid token subject');
-      request.userId = payload.sub;
+      request.user = { id: payload.sub };
 
       return true;
     } catch {
