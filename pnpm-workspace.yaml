@@ -1,0 +1,14 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Apps carry exact versions, shared packages use "*" peer dependencies
+saveExact: true
+engineStrict: true
+
+# Dependencies allowed to run their install scripts
+allowBuilds:
+  # Usage telemetry pulled by swagger-ui (bonus of the TP 1)
+  '@scarf/scarf': false
+  # Version check only
+  protobufjs: false
