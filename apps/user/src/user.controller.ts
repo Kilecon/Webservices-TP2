@@ -13,7 +13,11 @@ import { GrpcMethod } from '@nestjs/microservices';
 import { InjectModel } from '@nestjs/mongoose';
 import { rpcError } from '@recipes/contracts/grpc';
 import { SignJWT } from 'jose';
-import { type HydratedDocument, isValidObjectId, Model } from 'mongoose';
+import {
+  type HydratedDocument,
+  isValidObjectId,
+  type Model,
+} from 'mongoose';
 
 import { config } from './config.js';
 import { hashPassword, verifyPassword } from './password.js';
@@ -22,7 +26,7 @@ import { User } from './user.schema.js';
 type UserDocument = HydratedDocument<User>;
 
 @Controller()
-export class UserService {
+export class UserController {
   constructor(
     @InjectModel(User.name)
     private readonly users: Model<User>,
@@ -63,8 +67,9 @@ export class UserService {
 
   @GrpcMethod('UserService', 'GetUsers')
   async getUsers({ ids }: GetUsersRequest): Promise<GetUsersResponse> {
-    const validIds = ids.filter((id) => isValidObjectId(id));
-    const users = await this.users.find({ _id: { $in: validIds } }).exec();
+    const users = await this.users.find({
+      _id: { $in: ids.filter((id) => isValidObjectId(id)) },
+    });
 
     return { users: users.map((user) => toUserMessage(user)) };
   }
